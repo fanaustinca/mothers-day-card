@@ -26,42 +26,23 @@ body {
   text-align: center;
 }
 
-h1 {
-  font-size: 1.85em;
-  color: #b03060;
-  letter-spacing: 0.5px;
-  margin-bottom: 4px;
-}
-
-.year {
-  color: #d4849a;
-  font-size: 0.8em;
-  letter-spacing: 3px;
-  margin-bottom: 16px;
-}
+h1 { font-size: 1.85em; color: #b03060; letter-spacing: 0.5px; margin-bottom: 4px; }
+.year { color: #d4849a; font-size: 0.8em; letter-spacing: 3px; margin-bottom: 16px; }
 
 #hint {
-  font-size: 0.88em;
-  color: #b07080;
-  font-style: italic;
-  min-height: 1.4em;
-  margin-bottom: 8px;
-  transition: opacity 0.4s;
+  font-size: 0.88em; color: #b07080; font-style: italic;
+  min-height: 1.4em; margin-bottom: 8px; transition: opacity 0.4s;
 }
 
 #bouquet {
-  display: block;
-  margin: 0 auto;
-  width: 100%;
-  max-width: 420px;
-  overflow: visible;
+  display: block; margin: 0 auto;
+  width: 100%; max-width: 420px; overflow: visible;
 }
 
 @keyframes budGlow {
   0%, 100% { filter: drop-shadow(0 0 3px rgba(220,60,90,0.35)); }
   50%       { filter: drop-shadow(0 0 9px rgba(220,60,90,0.85)); }
 }
-
 #sflower         { animation: budGlow 2.2s ease-in-out infinite; }
 #sflower.bloomed { animation: none; filter: none; }
 </style>
@@ -78,7 +59,10 @@ h1 {
 (function () {
   const NS  = 'http://www.w3.org/2000/svg';
   const svg = document.getElementById('bouquet');
-  let clicked = false;
+  let isOpen    = false;
+  let overlayEl = null;
+  let hintOverEl = null;
+  let unbloomFn  = null;
 
   function mk(tag, attrs) {
     const e = document.createElementNS(NS, tag);
@@ -86,13 +70,11 @@ h1 {
     return e;
   }
 
-  // Smooth petal path: from (0,0) upward to (0,-h), width w
   function petalD(w, h) {
     const hw = w / 2;
     return `M 0 0 C ${-hw} ${-h*.26} ${-hw} ${-h*.68} 0 ${-h} C ${hw} ${-h*.68} ${hw} ${-h*.26} 0 0 Z`;
   }
 
-  // Draw a fully-bloomed static flower
   function staticFlower(cx, cy, n, pLen, pWid, pCol, cCol, cR) {
     const g = mk('g');
     for (let i = 0; i < n; i++) {
@@ -104,7 +86,6 @@ h1 {
     svg.appendChild(g);
   }
 
-  // Draw the special bud that blooms on click
   function specialFlower(cx, cy) {
     const g = mk('g', { id: 'sflower' });
     g.style.cursor = 'pointer';
@@ -112,134 +93,179 @@ h1 {
     const n = 8, pL = 52, pW = 22;
     const allPetals = [];
 
-    // Outer petals
     for (let i = 0; i < n; i++) {
       const gr = mk('g', { transform: `translate(${cx},${cy}) rotate(${i * 45})` });
       const p  = mk('path', { d: petalD(pW, pL), fill: '#e05575' });
-      const delay = (i * 0.065).toFixed(3);
-      p.style.cssText = [
-        'transform-box:fill-box',
-        'transform-origin:50% 100%',
-        'transform:scaleY(0.07) scaleX(0.22)',
-        `transition:transform 0.9s cubic-bezier(0.34,1.42,0.64,1) ${delay}s`
-      ].join(';');
-      gr.appendChild(p);
-      g.appendChild(gr);
-      allPetals.push(p);
+      p.style.cssText = 'transform-box:fill-box;transform-origin:50% 100%;transform:scaleY(0.07) scaleX(0.22);transition:transform 0.9s cubic-bezier(0.34,1.42,0.64,1)';
+      gr.appendChild(p); g.appendChild(gr); allPetals.push(p);
     }
 
-    // Inner petals (offset 22.5°, slightly smaller)
     for (let i = 0; i < n; i++) {
       const gr = mk('g', { transform: `translate(${cx},${cy}) rotate(${i * 45 + 22.5})` });
       const p  = mk('path', { d: petalD(pW * .75, pL * .82), fill: '#ef8098' });
-      const delay = (0.032 + i * 0.065).toFixed(3);
-      p.style.cssText = [
-        'transform-box:fill-box',
-        'transform-origin:50% 100%',
-        'transform:scaleY(0.07) scaleX(0.22)',
-        `transition:transform 0.9s cubic-bezier(0.34,1.42,0.64,1) ${delay}s`
-      ].join(';');
-      gr.appendChild(p);
-      g.appendChild(gr);
-      allPetals.push(p);
+      p.style.cssText = 'transform-box:fill-box;transform-origin:50% 100%;transform:scaleY(0.07) scaleX(0.22);transition:transform 0.9s cubic-bezier(0.34,1.42,0.64,1)';
+      gr.appendChild(p); g.appendChild(gr); allPetals.push(p);
     }
 
-    // Green sepals — visible on top when bud is closed
     const sepalG = mk('g');
     for (let i = 0; i < 5; i++) {
       const gr = mk('g', { transform: `translate(${cx},${cy}) rotate(${i * 72})` });
       const s  = mk('path', { d: petalD(9, 22), fill: '#4a7c35' });
       s.style.cssText = 'opacity:0.95;transition:opacity 0.55s ease 0.1s';
-      gr.appendChild(s);
-      sepalG.appendChild(gr);
+      gr.appendChild(s); sepalG.appendChild(gr);
     }
     g.appendChild(sepalG);
 
-    // Small yellow center dot (visible in bud state)
     const dot = mk('circle', { cx, cy, r: '9', fill: '#ffc107' });
-    dot.style.transition = 'opacity 0.3s ease 0.85s';
+    dot.style.transition = 'opacity 0.3s ease 0.4s';
     g.appendChild(dot);
-
-    // Large reveal circle — expands on bloom to hold the message
-    const reveal = mk('circle', {
-      cx, cy, r: '50',
-      fill: '#fff0f4',
-      stroke: '#e8a0b5',
-      'stroke-width': '1.5'
-    });
-    reveal.style.cssText = [
-      'transform-box:fill-box',
-      'transform-origin:50% 50%',
-      'transform:scale(0)',
-      'transition:transform 0.7s cubic-bezier(0.34,1.3,0.64,1) 0.65s'
-    ].join(';');
-    g.appendChild(reveal);
-
-    // Message inside the flower (foreignObject)
-    const fo = mk('foreignObject', { x: cx - 46, y: cy - 37, width: '92', height: '74' });
-    fo.style.cssText = 'opacity:0;transition:opacity 0.55s ease 1.4s';
-
-    const div = document.createElement('div');
-    div.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
-    div.style.cssText = [
-      'width:92px',
-      'height:74px',
-      'display:flex',
-      'flex-direction:column',
-      'align-items:center',
-      'justify-content:center',
-      'text-align:center',
-      'font-family:Georgia,serif',
-      'font-size:10.5px',
-      'color:#8b2040',
-      'line-height:1.65',
-      'pointer-events:none'
-    ].join(';');
-    div.innerHTML = 'Thank you<br>for your love<br>&amp; your light ♥';
-    fo.appendChild(div);
-    g.appendChild(fo);
-
     svg.appendChild(g);
 
-    g.addEventListener('click', () => {
-      if (clicked) return;
-      clicked = true;
+    function bloom() {
       g.classList.add('bloomed');
-
-      // Open all petals
-      allPetals.forEach(p => { p.style.transform = 'scaleY(1) scaleX(1)'; });
-
-      // Fade out sepals
+      allPetals.forEach((p, i) => {
+        p.style.transitionDelay = `${(i * 0.065).toFixed(3)}s`;
+        p.style.transform = 'scaleY(1) scaleX(1)';
+      });
       sepalG.querySelectorAll('path').forEach(s => { s.style.opacity = '0'; });
-
-      // Fade out yellow dot (reveal circle will cover it)
       dot.style.opacity = '0';
+    }
 
-      // Expand reveal circle
-      reveal.style.transform = 'scale(1)';
-
-      // Fade in message (CSS transition handles the delay)
-      fo.style.opacity = '1';
-
-      // Update hint
-      const hint = document.getElementById('hint');
-      hint.style.opacity = '0';
+    function unbloom() {
+      allPetals.forEach(p => {
+        p.style.transitionDelay = '0s';
+        p.style.transform = 'scaleY(0.07) scaleX(0.22)';
+      });
       setTimeout(() => {
-        hint.textContent = '🌹 A message, just for you...';
-        hint.style.opacity = '1';
+        sepalG.querySelectorAll('path').forEach(s => { s.style.opacity = '0.95'; });
+        dot.style.opacity = '1';
+        g.classList.remove('bloomed');
       }, 600);
+    }
+
+    unbloomFn = unbloom;
+
+    g.addEventListener('click', e => {
+      e.stopPropagation();
+      if (isOpen) { closeOverlay(); return; }
+      isOpen = true;
+      bloom();
+      setHint('🌹 Click the flower to close');
+      setTimeout(showOverlay, 250);
     });
   }
 
-  // ─── Assemble bouquet ─────────────────────────────────────────────
+  // ── Fullscreen overlay ──────────────────────────────────────────────
+
+  function showOverlay() {
+    if (overlayEl) return;
+
+    overlayEl = document.createElement('div');
+    Object.assign(overlayEl.style, {
+      position: 'fixed', inset: '0', zIndex: '200',
+      background: 'rgba(255,245,248,0.97)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      cursor: 'pointer', opacity: '0', transition: 'opacity 0.5s ease'
+    });
+    document.body.appendChild(overlayEl);
+
+    hintOverEl = document.createElement('p');
+    Object.assign(hintOverEl.style, {
+      position: 'fixed', bottom: '22px', left: '50%',
+      transform: 'translateX(-50%)', zIndex: '201',
+      fontFamily: 'Georgia,serif', fontSize: '0.85em',
+      color: '#b07080', fontStyle: 'italic',
+      pointerEvents: 'none', opacity: '0',
+      transition: 'opacity 0.5s ease 2.2s', whiteSpace: 'nowrap'
+    });
+    hintOverEl.textContent = 'Tap anywhere to close';
+    document.body.appendChild(hintOverEl);
+
+    // ── Large flower SVG ─────────────────────────────────────────────
+    const fsvg = mk('svg', { viewBox: '-66 -66 132 132', preserveAspectRatio: 'xMidYMid meet' });
+    fsvg.style.cssText = 'width:90vmin;height:90vmin;pointer-events:none;overflow:visible';
+
+    const n = 8, pL = 52, pW = 22;
+    const fps = []; // fullscreen petals to animate
+
+    for (let i = 0; i < n; i++) {
+      const gr = mk('g', { transform: `rotate(${i * 45})` });
+      const p  = mk('path', { d: petalD(pW, pL), fill: '#e05575', opacity: '0.9' });
+      p.style.cssText = `transform-box:fill-box;transform-origin:50% 100%;transform:scaleY(0.07) scaleX(0.22);transition:transform 0.9s cubic-bezier(0.34,1.42,0.64,1) ${(i*0.065).toFixed(3)}s`;
+      gr.appendChild(p); fsvg.appendChild(gr); fps.push(p);
+    }
+
+    for (let i = 0; i < n; i++) {
+      const gr = mk('g', { transform: `rotate(${i * 45 + 22.5})` });
+      const p  = mk('path', { d: petalD(pW*.75, pL*.82), fill: '#ef8098', opacity: '0.85' });
+      p.style.cssText = `transform-box:fill-box;transform-origin:50% 100%;transform:scaleY(0.07) scaleX(0.22);transition:transform 0.9s cubic-bezier(0.34,1.42,0.64,1) ${(0.032+i*0.065).toFixed(3)}s`;
+      gr.appendChild(p); fsvg.appendChild(gr); fps.push(p);
+    }
+
+    // Semi-transparent center circle so petal bases remain visible
+    const ring = mk('circle', { cx: '0', cy: '0', r: '22',
+      fill: 'rgba(255,240,244,0.88)', stroke: '#e8a0b5', 'stroke-width': '0.4' });
+    ring.style.cssText = 'transform-box:fill-box;transform-origin:50% 50%;transform:scale(0);transition:transform 0.7s cubic-bezier(0.34,1.3,0.64,1) 0.55s';
+    fsvg.appendChild(ring);
+
+    // Message text — SVG text scales with the flower
+    const lines = ['Thank you', 'for your love', '& your light ♥'];
+    const lh = 6.2;
+    const startY = -(lh * (lines.length - 1)) / 2;
+    const textEls = lines.map((line, i) => {
+      const t = mk('text', {
+        x: '0', y: String(startY + i * lh),
+        'text-anchor': 'middle', 'dominant-baseline': 'central',
+        'font-family': 'Georgia, serif', 'font-size': '4',
+        fill: '#8b2040'
+      });
+      t.style.cssText = `opacity:0;transition:opacity 0.55s ease ${(1.3 + i * 0.18).toFixed(2)}s`;
+      t.textContent = line;
+      fsvg.appendChild(t);
+      return t;
+    });
+
+    overlayEl.appendChild(fsvg);
+
+    // Kick off animations after the browser commits initial styles
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      overlayEl.style.opacity = '1';
+      hintOverEl.style.opacity = '1';
+      fps.forEach(p => { p.style.transform = 'scaleY(1) scaleX(1)'; });
+      ring.style.transform = 'scale(1)';
+      textEls.forEach(t => { t.style.opacity = '1'; });
+    }));
+
+    overlayEl.addEventListener('click', closeOverlay);
+  }
+
+  function closeOverlay() {
+    if (!overlayEl) return;
+    isOpen = false;
+    overlayEl.style.opacity = '0';
+    if (hintOverEl) hintOverEl.style.opacity = '0';
+    setTimeout(() => {
+      overlayEl?.remove();  overlayEl = null;
+      hintOverEl?.remove(); hintOverEl = null;
+    }, 500);
+    unbloomFn?.();
+    setHint('✨ One flower holds a secret — find it');
+  }
+
+  function setHint(text) {
+    const el = document.getElementById('hint');
+    el.style.opacity = '0';
+    setTimeout(() => { el.textContent = text; el.style.opacity = '1'; }, 400);
+  }
+
+  // ── Assemble bouquet ───────────────────────────────────────────────
 
   const WX = 197, WY = 272;
 
-  // Stems (drawn first so they appear behind flowers)
   [
     { fx:  96, fy: 118, cp: [138, 207] },
     { fx: 155, fy:  80, cp: [163, 186] },
-    { fx: 220, fy:  68, cp: [210, 178] }, // special flower
+    { fx: 220, fy:  68, cp: [210, 178] },
     { fx: 280, fy:  78, cp: [243, 186] },
     { fx: 340, fy: 116, cp: [265, 205] },
     { fx: 133, fy: 155, cp: [158, 222] },
@@ -247,46 +273,36 @@ h1 {
   ].forEach(({ fx, fy, cp: [cpx, cpy] }) => {
     svg.appendChild(mk('path', {
       d: `M ${WX} ${WY} Q ${cpx} ${cpy} ${fx} ${fy + 14}`,
-      stroke: '#5a8c3c', 'stroke-width': '2.5',
-      fill: 'none', 'stroke-linecap': 'round'
+      stroke: '#5a8c3c', 'stroke-width': '2.5', fill: 'none', 'stroke-linecap': 'round'
     }));
   });
 
-  // Leaves
-  [
-    [147, 207, -40,  8, 16],
-    [172, 224,  18,  7, 14],
-    [230, 215,  26,  9, 17],
-    [264, 220, -23,  7, 14],
-    [120, 238, -52,  6, 12],
-    [288, 231,  42,  6, 12],
-  ].forEach(([x, y, rot, rx, ry]) => {
+  [ [147,207,-40,8,16],[172,224,18,7,14],[230,215,26,9,17],
+    [264,220,-23,7,14],[120,238,-52,6,12],[288,231,42,6,12] ]
+  .forEach(([x,y,rot,rx,ry]) => {
     const g = mk('g', { transform: `translate(${x},${y}) rotate(${rot})` });
-    g.appendChild(mk('ellipse', { cx: 0, cy: 0, rx, ry, fill: '#5a8c3c', opacity: '0.82' }));
+    g.appendChild(mk('ellipse', { cx:0, cy:0, rx, ry, fill:'#5a8c3c', opacity:'0.82' }));
     svg.appendChild(g);
   });
 
-  // Ribbon/wrap at base of bouquet
   svg.appendChild(mk('path', {
     d: `M ${WX-30} ${WY-8} C ${WX-14} ${WY+10} ${WX+14} ${WY+10} ${WX+30} ${WY-8}`,
     stroke: '#c0395a', 'stroke-width': '3', fill: 'none', 'stroke-linecap': 'round'
   }));
-  [[-20, 2, -38, 28], [20, 2, 38, 28]].forEach(([x1, y1, x2, y2]) => {
+  [[-20,2,-38,28],[20,2,38,28]].forEach(([x1,y1,x2,y2]) => {
     svg.appendChild(mk('path', {
       d: `M ${WX+x1} ${WY+y1} L ${WX+x2} ${WY+y2}`,
       stroke: '#e05575', 'stroke-width': '2.5', fill: 'none', 'stroke-linecap': 'round'
     }));
   });
 
-  // Static bloomed flowers (larger than before)
-  staticFlower( 96, 111,  6, 28, 14, '#e878a8', '#fdd835',  8);
-  staticFlower(155,  73,  8, 24, 12, '#ab47bc', '#fff176',  7);
-  staticFlower(280,  71,  7, 27, 13, '#ff8a65', '#ff7043',  8);
-  staticFlower(340, 109,  5, 30, 15, '#f06292', '#fff176',  9);
-  staticFlower(133, 148,  6, 22, 11, '#80cbc4', '#fdd835',  7);
-  staticFlower(261, 143,  8, 23, 12, '#f48fb1', '#fff176',  7);
+  staticFlower( 96, 111, 6, 28, 14, '#e878a8', '#fdd835', 8);
+  staticFlower(155,  73, 8, 24, 12, '#ab47bc', '#fff176', 7);
+  staticFlower(280,  71, 7, 27, 13, '#ff8a65', '#ff7043', 8);
+  staticFlower(340, 109, 5, 30, 15, '#f06292', '#fff176', 9);
+  staticFlower(133, 148, 6, 22, 11, '#80cbc4', '#fdd835', 7);
+  staticFlower(261, 143, 8, 23, 12, '#f48fb1', '#fff176', 7);
 
-  // Special bud — drawn last so it renders on top
   specialFlower(220, 62);
 })();
 </script>
