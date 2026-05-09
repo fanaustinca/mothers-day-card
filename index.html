@@ -10,9 +10,7 @@
 body {
   min-height: 100vh;
   background: linear-gradient(155deg, #fff5f8 0%, #fce4ec 55%, #fff9e6 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex; align-items: center; justify-content: center;
   font-family: Georgia, 'Times New Roman', serif;
 }
 
@@ -21,9 +19,7 @@ body {
   border-radius: 28px;
   box-shadow: 0 12px 50px rgba(180,80,110,0.15), 0 2px 8px rgba(180,80,110,0.08);
   padding: 34px 36px 28px;
-  max-width: 460px;
-  width: 95vw;
-  text-align: center;
+  max-width: 460px; width: 95vw; text-align: center;
 }
 
 h1 { font-size: 1.85em; color: #b03060; letter-spacing: 0.5px; margin-bottom: 4px; }
@@ -34,10 +30,7 @@ h1 { font-size: 1.85em; color: #b03060; letter-spacing: 0.5px; margin-bottom: 4p
   min-height: 1.4em; margin-bottom: 8px; transition: opacity 0.4s;
 }
 
-#bouquet {
-  display: block; margin: 0 auto;
-  width: 100%; max-width: 420px; overflow: visible;
-}
+#bouquet { display: block; margin: 0 auto; width: 100%; max-width: 420px; overflow: visible; }
 
 @keyframes budGlow {
   0%, 100% { filter: drop-shadow(0 0 3px rgba(220,60,90,0.35)); }
@@ -51,7 +44,7 @@ h1 { font-size: 1.85em; color: #b03060; letter-spacing: 0.5px; margin-bottom: 4p
 <div class="card">
   <h1>Happy Mother's Day</h1>
   <p class="year">2 0 2 6</p>
-  <p id="hint">✨ One flower holds a secret — find it</p>
+  <p id="hint">✨ Every flower holds a secret — click them all</p>
   <svg id="bouquet" viewBox="0 0 400 310"></svg>
 </div>
 
@@ -59,10 +52,10 @@ h1 { font-size: 1.85em; color: #b03060; letter-spacing: 0.5px; margin-bottom: 4p
 (function () {
   const NS  = 'http://www.w3.org/2000/svg';
   const svg = document.getElementById('bouquet');
-  let isOpen    = false;
-  let overlayEl = null;
-  let hintOverEl = null;
-  let unbloomFn  = null;
+
+  let overlayEl   = null;
+  let hintOverEl  = null;
+  let onCloseHook = null;
 
   function mk(tag, attrs) {
     const e = document.createElementNS(NS, tag);
@@ -75,15 +68,139 @@ h1 { font-size: 1.85em; color: #b03060; letter-spacing: 0.5px; margin-bottom: 4p
     return `M 0 0 C ${-hw} ${-h*.26} ${-hw} ${-h*.68} 0 ${-h} C ${hw} ${-h*.68} ${hw} ${-h*.26} 0 0 Z`;
   }
 
-  function staticFlower(cx, cy, n, pLen, pWid, pCol, cCol, cR) {
+  // ── Fullscreen overlay ─────────────────────────────────────────────
+  // cfg: { n, pL, pW, outer, inner, cFill, msg[], onClose? }
+
+  function showOverlay(cfg) {
+    // Force-replace any existing overlay instantly
+    if (overlayEl) {
+      onCloseHook?.(); onCloseHook = null;
+      overlayEl.remove(); overlayEl = null;
+      hintOverEl?.remove(); hintOverEl = null;
+    }
+
+    onCloseHook = cfg.onClose || null;
+
+    overlayEl = document.createElement('div');
+    Object.assign(overlayEl.style, {
+      position: 'fixed', inset: '0', zIndex: '200',
+      background: 'rgba(255,245,248,0.97)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      cursor: 'pointer', opacity: '0', transition: 'opacity 0.5s ease'
+    });
+    document.body.appendChild(overlayEl);
+
+    hintOverEl = document.createElement('p');
+    Object.assign(hintOverEl.style, {
+      position: 'fixed', bottom: '22px', left: '50%',
+      transform: 'translateX(-50%)', zIndex: '201',
+      fontFamily: 'Georgia,serif', fontSize: '0.85em',
+      color: '#b07080', fontStyle: 'italic',
+      pointerEvents: 'none', opacity: '0',
+      transition: 'opacity 0.5s ease 2s', whiteSpace: 'nowrap'
+    });
+    hintOverEl.textContent = 'Tap anywhere to close';
+    document.body.appendChild(hintOverEl);
+
+    // Scale all flowers to the same size in fullscreen
+    const FULL_L = 55;
+    const scale  = FULL_L / cfg.pL;
+    const pL     = FULL_L;
+    const pW     = Math.round(cfg.pW * scale);
+    const { n, outer, inner, cFill, msg } = cfg;
+
+    const fsvg = mk('svg', { viewBox: '-66 -66 132 132', preserveAspectRatio: 'xMidYMid meet' });
+    fsvg.style.cssText = 'width:90vmin;height:90vmin;pointer-events:none;overflow:visible';
+
+    const fps = [];
+
+    // Outer petals
+    for (let i = 0; i < n; i++) {
+      const delay = (i * 0.5 / n).toFixed(3);
+      const gr = mk('g', { transform: `rotate(${i * 360 / n})` });
+      const p  = mk('path', { d: petalD(pW, pL), fill: outer, opacity: '0.9' });
+      p.style.cssText = `transform-box:fill-box;transform-origin:50% 100%;transform:scaleY(0.07) scaleX(0.22);transition:transform 0.9s cubic-bezier(0.34,1.42,0.64,1) ${delay}s`;
+      gr.appendChild(p); fsvg.appendChild(gr); fps.push(p);
+    }
+
+    // Inner petals (offset by half a petal gap)
+    for (let i = 0; i < n; i++) {
+      const delay = (0.025 + i * 0.5 / n).toFixed(3);
+      const gr = mk('g', { transform: `rotate(${i * 360 / n + 180 / n})` });
+      const p  = mk('path', { d: petalD(pW * .75, pL * .82), fill: inner, opacity: '0.85' });
+      p.style.cssText = `transform-box:fill-box;transform-origin:50% 100%;transform:scaleY(0.07) scaleX(0.22);transition:transform 0.9s cubic-bezier(0.34,1.42,0.64,1) ${delay}s`;
+      gr.appendChild(p); fsvg.appendChild(gr); fps.push(p);
+    }
+
+    // Center circle — semi-transparent so petal bases show through
+    const ring = mk('circle', { cx: '0', cy: '0', r: '22',
+      fill: 'rgba(255,240,244,0.90)', stroke: 'rgba(200,130,150,0.45)', 'stroke-width': '0.4' });
+    ring.style.cssText = 'transform-box:fill-box;transform-origin:50% 50%;transform:scale(0);transition:transform 0.7s cubic-bezier(0.34,1.3,0.64,1) 0.55s';
+    fsvg.appendChild(ring);
+
+    // Message text (SVG-native so it scales with the flower)
+    const lh = 6.2, sy = -(lh * (msg.length - 1)) / 2;
+    const textEls = msg.map((line, i) => {
+      const t = mk('text', {
+        x: '0', y: String(sy + i * lh),
+        'text-anchor': 'middle', 'dominant-baseline': 'central',
+        'font-family': 'Georgia, serif', 'font-size': '4',
+        fill: '#8b2040'
+      });
+      t.style.cssText = `opacity:0;transition:opacity 0.55s ease ${(1.3 + i * 0.18).toFixed(2)}s`;
+      t.textContent = line;
+      fsvg.appendChild(t);
+      return t;
+    });
+
+    overlayEl.appendChild(fsvg);
+    overlayEl.addEventListener('click', closeOverlay);
+
+    // Two rAF frames so browser commits initial styles before transition fires
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      overlayEl.style.opacity = '1';
+      hintOverEl.style.opacity = '1';
+      fps.forEach(p => { p.style.transform = 'scaleY(1) scaleX(1)'; });
+      ring.style.transform = 'scale(1)';
+      textEls.forEach(t => { t.style.opacity = '1'; });
+    }));
+  }
+
+  function closeOverlay() {
+    if (!overlayEl) return;
+    overlayEl.style.opacity = '0';
+    hintOverEl && (hintOverEl.style.opacity = '0');
+    const hook = onCloseHook; onCloseHook = null;
+    setTimeout(() => {
+      overlayEl?.remove(); overlayEl = null;
+      hintOverEl?.remove(); hintOverEl = null;
+      hook?.();
+    }, 500);
+  }
+
+  function setHint(text) {
+    const el = document.getElementById('hint');
+    el.style.opacity = '0';
+    setTimeout(() => { el.textContent = text; el.style.opacity = '1'; }, 400);
+  }
+
+  // ── Flower builders ────────────────────────────────────────────────
+
+  function staticFlower(cx, cy, n, pLen, pWid, outer, inner, cCol, cR, msg) {
     const g = mk('g');
+    g.style.cursor = 'pointer';
     for (let i = 0; i < n; i++) {
       const gr = mk('g', { transform: `translate(${cx},${cy}) rotate(${i * 360 / n})` });
-      gr.appendChild(mk('path', { d: petalD(pWid, pLen), fill: pCol, opacity: '0.88' }));
+      gr.appendChild(mk('path', { d: petalD(pWid, pLen), fill: outer, opacity: '0.88' }));
       g.appendChild(gr);
     }
     g.appendChild(mk('circle', { cx, cy, r: cR, fill: cCol }));
     svg.appendChild(g);
+
+    g.addEventListener('click', e => {
+      e.stopPropagation();
+      showOverlay({ n, pL: pLen, pW: pWid, outer, inner, cFill: cCol, msg });
+    });
   }
 
   function specialFlower(cx, cy) {
@@ -99,7 +216,6 @@ h1 { font-size: 1.85em; color: #b03060; letter-spacing: 0.5px; margin-bottom: 4p
       p.style.cssText = 'transform-box:fill-box;transform-origin:50% 100%;transform:scaleY(0.07) scaleX(0.22);transition:transform 0.9s cubic-bezier(0.34,1.42,0.64,1)';
       gr.appendChild(p); g.appendChild(gr); allPetals.push(p);
     }
-
     for (let i = 0; i < n; i++) {
       const gr = mk('g', { transform: `translate(${cx},${cy}) rotate(${i * 45 + 22.5})` });
       const p  = mk('path', { d: petalD(pW * .75, pL * .82), fill: '#ef8098' });
@@ -121,6 +237,8 @@ h1 { font-size: 1.85em; color: #b03060; letter-spacing: 0.5px; margin-bottom: 4p
     g.appendChild(dot);
     svg.appendChild(g);
 
+    let budOpen = false;
+
     function bloom() {
       g.classList.add('bloomed');
       allPetals.forEach((p, i) => {
@@ -140,128 +258,29 @@ h1 { font-size: 1.85em; color: #b03060; letter-spacing: 0.5px; margin-bottom: 4p
         sepalG.querySelectorAll('path').forEach(s => { s.style.opacity = '0.95'; });
         dot.style.opacity = '1';
         g.classList.remove('bloomed');
+        budOpen = false;
       }, 600);
     }
 
-    unbloomFn = unbloom;
-
     g.addEventListener('click', e => {
       e.stopPropagation();
-      if (isOpen) { closeOverlay(); return; }
-      isOpen = true;
+      if (budOpen) return;
+      budOpen = true;
       bloom();
-      setHint('🌹 Click the flower to close');
-      setTimeout(showOverlay, 250);
-    });
-  }
-
-  // ── Fullscreen overlay ──────────────────────────────────────────────
-
-  function showOverlay() {
-    if (overlayEl) return;
-
-    overlayEl = document.createElement('div');
-    Object.assign(overlayEl.style, {
-      position: 'fixed', inset: '0', zIndex: '200',
-      background: 'rgba(255,245,248,0.97)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      cursor: 'pointer', opacity: '0', transition: 'opacity 0.5s ease'
-    });
-    document.body.appendChild(overlayEl);
-
-    hintOverEl = document.createElement('p');
-    Object.assign(hintOverEl.style, {
-      position: 'fixed', bottom: '22px', left: '50%',
-      transform: 'translateX(-50%)', zIndex: '201',
-      fontFamily: 'Georgia,serif', fontSize: '0.85em',
-      color: '#b07080', fontStyle: 'italic',
-      pointerEvents: 'none', opacity: '0',
-      transition: 'opacity 0.5s ease 2.2s', whiteSpace: 'nowrap'
-    });
-    hintOverEl.textContent = 'Tap anywhere to close';
-    document.body.appendChild(hintOverEl);
-
-    // ── Large flower SVG ─────────────────────────────────────────────
-    const fsvg = mk('svg', { viewBox: '-66 -66 132 132', preserveAspectRatio: 'xMidYMid meet' });
-    fsvg.style.cssText = 'width:90vmin;height:90vmin;pointer-events:none;overflow:visible';
-
-    const n = 8, pL = 52, pW = 22;
-    const fps = []; // fullscreen petals to animate
-
-    for (let i = 0; i < n; i++) {
-      const gr = mk('g', { transform: `rotate(${i * 45})` });
-      const p  = mk('path', { d: petalD(pW, pL), fill: '#e05575', opacity: '0.9' });
-      p.style.cssText = `transform-box:fill-box;transform-origin:50% 100%;transform:scaleY(0.07) scaleX(0.22);transition:transform 0.9s cubic-bezier(0.34,1.42,0.64,1) ${(i*0.065).toFixed(3)}s`;
-      gr.appendChild(p); fsvg.appendChild(gr); fps.push(p);
-    }
-
-    for (let i = 0; i < n; i++) {
-      const gr = mk('g', { transform: `rotate(${i * 45 + 22.5})` });
-      const p  = mk('path', { d: petalD(pW*.75, pL*.82), fill: '#ef8098', opacity: '0.85' });
-      p.style.cssText = `transform-box:fill-box;transform-origin:50% 100%;transform:scaleY(0.07) scaleX(0.22);transition:transform 0.9s cubic-bezier(0.34,1.42,0.64,1) ${(0.032+i*0.065).toFixed(3)}s`;
-      gr.appendChild(p); fsvg.appendChild(gr); fps.push(p);
-    }
-
-    // Semi-transparent center circle so petal bases remain visible
-    const ring = mk('circle', { cx: '0', cy: '0', r: '22',
-      fill: 'rgba(255,240,244,0.88)', stroke: '#e8a0b5', 'stroke-width': '0.4' });
-    ring.style.cssText = 'transform-box:fill-box;transform-origin:50% 50%;transform:scale(0);transition:transform 0.7s cubic-bezier(0.34,1.3,0.64,1) 0.55s';
-    fsvg.appendChild(ring);
-
-    // Message text — SVG text scales with the flower
-    const lines = ['Thank you', 'for your love', '& your light ♥'];
-    const lh = 6.2;
-    const startY = -(lh * (lines.length - 1)) / 2;
-    const textEls = lines.map((line, i) => {
-      const t = mk('text', {
-        x: '0', y: String(startY + i * lh),
-        'text-anchor': 'middle', 'dominant-baseline': 'central',
-        'font-family': 'Georgia, serif', 'font-size': '4',
-        fill: '#8b2040'
+      showOverlay({
+        n: 8, pL: 52, pW: 22,
+        outer: '#e05575', inner: '#ef8098', cFill: '#ffc107',
+        msg: ['With all', 'my love', '♥'],
+        onClose: unbloom
       });
-      t.style.cssText = `opacity:0;transition:opacity 0.55s ease ${(1.3 + i * 0.18).toFixed(2)}s`;
-      t.textContent = line;
-      fsvg.appendChild(t);
-      return t;
     });
-
-    overlayEl.appendChild(fsvg);
-
-    // Kick off animations after the browser commits initial styles
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      overlayEl.style.opacity = '1';
-      hintOverEl.style.opacity = '1';
-      fps.forEach(p => { p.style.transform = 'scaleY(1) scaleX(1)'; });
-      ring.style.transform = 'scale(1)';
-      textEls.forEach(t => { t.style.opacity = '1'; });
-    }));
-
-    overlayEl.addEventListener('click', closeOverlay);
-  }
-
-  function closeOverlay() {
-    if (!overlayEl) return;
-    isOpen = false;
-    overlayEl.style.opacity = '0';
-    if (hintOverEl) hintOverEl.style.opacity = '0';
-    setTimeout(() => {
-      overlayEl?.remove();  overlayEl = null;
-      hintOverEl?.remove(); hintOverEl = null;
-    }, 500);
-    unbloomFn?.();
-    setHint('✨ One flower holds a secret — find it');
-  }
-
-  function setHint(text) {
-    const el = document.getElementById('hint');
-    el.style.opacity = '0';
-    setTimeout(() => { el.textContent = text; el.style.opacity = '1'; }, 400);
   }
 
   // ── Assemble bouquet ───────────────────────────────────────────────
 
   const WX = 197, WY = 272;
 
+  // Stems
   [
     { fx:  96, fy: 118, cp: [138, 207] },
     { fx: 155, fy:  80, cp: [163, 186] },
@@ -277,14 +296,16 @@ h1 { font-size: 1.85em; color: #b03060; letter-spacing: 0.5px; margin-bottom: 4p
     }));
   });
 
-  [ [147,207,-40,8,16],[172,224,18,7,14],[230,215,26,9,17],
-    [264,220,-23,7,14],[120,238,-52,6,12],[288,231,42,6,12] ]
+  // Leaves
+  [[147,207,-40,8,16],[172,224,18,7,14],[230,215,26,9,17],
+   [264,220,-23,7,14],[120,238,-52,6,12],[288,231,42,6,12]]
   .forEach(([x,y,rot,rx,ry]) => {
     const g = mk('g', { transform: `translate(${x},${y}) rotate(${rot})` });
-    g.appendChild(mk('ellipse', { cx:0, cy:0, rx, ry, fill:'#5a8c3c', opacity:'0.82' }));
+    g.appendChild(mk('ellipse', { cx: 0, cy: 0, rx, ry, fill: '#5a8c3c', opacity: '0.82' }));
     svg.appendChild(g);
   });
 
+  // Ribbon
   svg.appendChild(mk('path', {
     d: `M ${WX-30} ${WY-8} C ${WX-14} ${WY+10} ${WX+14} ${WY+10} ${WX+30} ${WY-8}`,
     stroke: '#c0395a', 'stroke-width': '3', fill: 'none', 'stroke-linecap': 'round'
@@ -296,13 +317,15 @@ h1 { font-size: 1.85em; color: #b03060; letter-spacing: 0.5px; margin-bottom: 4p
     }));
   });
 
-  staticFlower( 96, 111, 6, 28, 14, '#e878a8', '#fdd835', 8);
-  staticFlower(155,  73, 8, 24, 12, '#ab47bc', '#fff176', 7);
-  staticFlower(280,  71, 7, 27, 13, '#ff8a65', '#ff7043', 8);
-  staticFlower(340, 109, 5, 30, 15, '#f06292', '#fff176', 9);
-  staticFlower(133, 148, 6, 22, 11, '#80cbc4', '#fdd835', 7);
-  staticFlower(261, 143, 8, 23, 12, '#f48fb1', '#fff176', 7);
+  //          cx   cy  n  pL  pW  outer      inner      center     cR  message
+  staticFlower( 96, 111, 6, 28, 14, '#e878a8', '#f0a8cc', '#fdd835',  8, ['You are',    'my sunshine',  '☀'    ]);
+  staticFlower(155,  73, 8, 24, 12, '#ab47bc', '#ce93d8', '#fff176',  7, ['Thank you',  'for everything','★'    ]);
+  staticFlower(280,  71, 7, 27, 13, '#ff8a65', '#ffb085', '#ff7043',  8, ['My forever', 'hero',          '♥'    ]);
+  staticFlower(340, 109, 5, 30, 15, '#f06292', '#f8a0b8', '#fff176',  9, ['You make',   'me smile',      '♥'    ]);
+  staticFlower(133, 148, 6, 22, 11, '#80cbc4', '#a8dcd8', '#fdd835',  7, ['My guiding', 'light',         '★'    ]);
+  staticFlower(261, 143, 8, 23, 12, '#f48fb1', '#f8b8cc', '#fff176',  7, ['Always in',  'my heart',      '♥'    ]);
 
+  // Special bud — drawn last so it renders on top
   specialFlower(220, 62);
 })();
 </script>
