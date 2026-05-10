@@ -63,7 +63,7 @@ h1 { font-size: 1.85em; color: #b03060; letter-spacing: 0.5px; margin-bottom: 4p
     }, 1400);
   }
 
-  // ── SVG helpers ────────────────────────────────────────────────────
+  // ── SVG / overlay helpers ──────────────────────────────────────────
   let overlayEl   = null;
   let hintOverEl  = null;
   let onCloseHook = null;
@@ -86,26 +86,25 @@ h1 { font-size: 1.85em; color: #b03060; letter-spacing: 0.5px; margin-bottom: 4p
       overlayEl.remove(); overlayEl = null;
       hintOverEl?.remove(); hintOverEl = null;
     }
-
     onCloseHook = cfg.onClose || null;
 
     overlayEl = document.createElement('div');
     Object.assign(overlayEl.style, {
-      position: 'fixed', inset: '0', zIndex: '200',
-      background: 'rgba(255,245,248,0.97)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      cursor: 'pointer', opacity: '0', transition: 'opacity 0.5s ease'
+      position:'fixed', inset:'0', zIndex:'200',
+      background:'rgba(255,245,248,0.97)',
+      display:'flex', alignItems:'center', justifyContent:'center',
+      cursor:'pointer', opacity:'0', transition:'opacity 0.5s ease'
     });
     document.body.appendChild(overlayEl);
 
     hintOverEl = document.createElement('p');
     Object.assign(hintOverEl.style, {
-      position: 'fixed', bottom: '22px', left: '50%',
-      transform: 'translateX(-50%)', zIndex: '201',
-      fontFamily: 'Georgia,serif', fontSize: '0.85em',
-      color: '#b07080', fontStyle: 'italic',
-      pointerEvents: 'none', opacity: '0',
-      transition: 'opacity 0.5s ease 2s', whiteSpace: 'nowrap'
+      position:'fixed', bottom:'22px', left:'50%',
+      transform:'translateX(-50%)', zIndex:'201',
+      fontFamily:'Georgia,serif', fontSize:'0.85em',
+      color:'#b07080', fontStyle:'italic',
+      pointerEvents:'none', opacity:'0',
+      transition:'opacity 0.5s ease 2s', whiteSpace:'nowrap'
     });
     hintOverEl.textContent = 'Tap anywhere to close';
     document.body.appendChild(hintOverEl);
@@ -114,35 +113,33 @@ h1 { font-size: 1.85em; color: #b03060; letter-spacing: 0.5px; margin-bottom: 4p
     const pL = FULL_L, pW = Math.round(cfg.pW * scale);
     const { n, outer, inner, msg } = cfg;
 
-    const fsvg = mk('svg', { viewBox: '-66 -66 132 132', preserveAspectRatio: 'xMidYMid meet' });
+    const fsvg = mk('svg', { viewBox:'-66 -66 132 132', preserveAspectRatio:'xMidYMid meet' });
     fsvg.style.cssText = 'width:90vmin;height:90vmin;pointer-events:none;overflow:visible';
 
     const fps = [];
     for (let i = 0; i < n; i++) {
-      const gr = mk('g', { transform: `rotate(${i * 360 / n})` });
-      const p  = mk('path', { d: petalD(pW, pL), fill: outer, opacity: '0.9' });
+      const gr = mk('g', { transform:`rotate(${i*360/n})` });
+      const p  = mk('path', { d:petalD(pW,pL), fill:outer, opacity:'0.9' });
       p.style.cssText = `transform-box:fill-box;transform-origin:50% 100%;transform:scaleY(0.07) scaleX(0.22);transition:transform 0.9s cubic-bezier(0.34,1.42,0.64,1) ${(i*0.5/n).toFixed(3)}s`;
       gr.appendChild(p); fsvg.appendChild(gr); fps.push(p);
     }
     for (let i = 0; i < n; i++) {
-      const gr = mk('g', { transform: `rotate(${i * 360 / n + 180 / n})` });
-      const p  = mk('path', { d: petalD(pW*.75, pL*.82), fill: inner, opacity: '0.85' });
+      const gr = mk('g', { transform:`rotate(${i*360/n+180/n})` });
+      const p  = mk('path', { d:petalD(pW*.75,pL*.82), fill:inner, opacity:'0.85' });
       p.style.cssText = `transform-box:fill-box;transform-origin:50% 100%;transform:scaleY(0.07) scaleX(0.22);transition:transform 0.9s cubic-bezier(0.34,1.42,0.64,1) ${(0.025+i*0.5/n).toFixed(3)}s`;
       gr.appendChild(p); fsvg.appendChild(gr); fps.push(p);
     }
 
-    const ring = mk('circle', { cx:'0', cy:'0', r:'22',
-      fill:'rgba(255,240,244,0.90)', stroke:'rgba(200,130,150,0.45)', 'stroke-width':'0.4' });
+    const ring = mk('circle', { cx:'0',cy:'0',r:'22',
+      fill:'rgba(255,240,244,0.90)',stroke:'rgba(200,130,150,0.45)','stroke-width':'0.4' });
     ring.style.cssText = 'transform-box:fill-box;transform-origin:50% 50%;transform:scale(0);transition:transform 0.7s cubic-bezier(0.34,1.3,0.64,1) 0.55s';
     fsvg.appendChild(ring);
 
-    const lh = 6.2, sy = -(lh * (msg.length - 1)) / 2;
+    const lh = 6.2, sy = -(lh*(msg.length-1))/2;
     const textEls = msg.map((line, i) => {
-      const t = mk('text', {
-        x:'0', y: String(sy + i * lh),
-        'text-anchor':'middle', 'dominant-baseline':'central',
-        'font-family':'Georgia, serif', 'font-size':'4', fill:'#8b2040'
-      });
+      const t = mk('text', { x:'0', y:String(sy+i*lh), 'text-anchor':'middle',
+        'dominant-baseline':'central', 'font-family':'Georgia, serif',
+        'font-size':'4', fill:'#8b2040' });
       t.style.cssText = `opacity:0;transition:opacity 0.55s ease ${(1.3+i*0.18).toFixed(2)}s`;
       t.textContent = line;
       fsvg.appendChild(t);
@@ -179,130 +176,265 @@ h1 { font-size: 1.85em; color: #b03060; letter-spacing: 0.5px; margin-bottom: 4p
     setTimeout(() => { el.textContent = text; el.style.opacity = '1'; }, 400);
   }
 
-  // ── Bouncing flower explosion ──────────────────────────────────────
+  // ── Palette shared between leaf rain and flowers ───────────────────
   const PALETTE = [
-    ['#e878a8','#f0a8cc'], ['#ab47bc','#ce93d8'],
-    ['#e05575','#ef8098'], ['#ff8a65','#ffb085'],
-    ['#f06292','#f8a0b8'], ['#80cbc4','#a8dcd8'],
+    ['#e878a8','#f0a8cc'],['#ab47bc','#ce93d8'],
+    ['#e05575','#ef8098'],['#ff8a65','#ffb085'],
+    ['#f06292','#f8a0b8'],['#80cbc4','#a8dcd8'],
     ['#f48fb1','#f8b8cc'],
   ];
-  const GRAVITY = 280; // px/s²
 
-  function triggerExplosion() {
-    // Find burst origin from the bouquet SVG
-    const rect  = document.getElementById('bouquet').getBoundingClientRect();
-    const bx    = rect.left + (197 / 400) * rect.width;
-    const by    = rect.top  + (230 / 310) * rect.height;
+  // ── Leaf rain ──────────────────────────────────────────────────────
+  function showLeafRain(onComplete) {
+    const W = window.innerWidth, H = window.innerHeight;
+    const COUNT = 38;
+    const LEAF_COLORS = ['#4a7c35','#5a8c3c','#3d6b2a','#6ba050','#508040','#427535','#63954a','#3a6828'];
+    const LEAF_SHAPES = [
+      'M 0 2 C -10 -3 -12 -14 0 -22 C 12 -14 10 -3 0 2 Z',
+      'M 0 2 C -8 -2 -10 -13 0 -24 C 10 -13 8 -2 0 2 Z',
+      'M 0 2 C -12 -3 -13 -12 0 -19 C 13 -12 12 -3 0 2 Z',
+    ];
 
-    // Fade out the card
-    const card = document.querySelector('.card');
-    card.style.opacity = '0';
-    card.style.pointerEvents = 'none';
-
-    // Fullscreen shell
     const shell = document.createElement('div');
-    shell.style.cssText = 'position:fixed;inset:0;z-index:300;overflow:hidden;cursor:pointer';
+    shell.style.cssText = 'position:fixed;inset:0;z-index:299;pointer-events:none;overflow:hidden';
     document.body.appendChild(shell);
 
-    const COUNT = 16;
+    // Pre-compute per-leaf data and build CSS keyframes
+    const data = Array.from({length: COUNT}, (_, i) => {
+      const startX   = Math.random() * W;
+      const finalY   = 20 + Math.random() * (H - 50);
+      const dy       = finalY + 62;                        // translateY to reach finalY from top:-62
+      const driftX   = (Math.random() - 0.5) * 220;
+      const driftMid = driftX * 0.6 + (Math.random() - 0.5) * 90;
+      const sr = (Math.random() - 0.5) * 400;
+      const mr = sr  + (Math.random() - 0.5) * 200;
+      const er = mr  + (Math.random() - 0.5) * 200;
+      return {
+        startX, dy, driftX, driftMid, sr, mr, er,
+        duration: 1.0 + Math.random() * 1.3,
+        delay:    i * 0.042,
+        size:     22 + Math.random() * 22,
+        color:    LEAF_COLORS[i % LEAF_COLORS.length],
+        shape:    LEAF_SHAPES[i % LEAF_SHAPES.length],
+      };
+    });
+
+    const styleEl = document.createElement('style');
+    styleEl.textContent = data.map(({dy, driftX, driftMid, sr, mr, er}, i) =>
+      `@keyframes lf${i}{
+        0%  {transform:translate(0,0) rotate(${sr.toFixed(1)}deg);opacity:0}
+        12% {opacity:.9}
+        45% {transform:translate(${driftMid.toFixed(1)}px,${(dy*.44).toFixed(1)}px) rotate(${mr.toFixed(1)}deg)}
+        100%{transform:translate(${driftX.toFixed(1)}px,${dy.toFixed(1)}px) rotate(${er.toFixed(1)}deg);opacity:.9}
+      }`
+    ).join('');
+    document.head.appendChild(styleEl);
+
+    data.forEach(({startX, duration, delay, size, color, shape}, i) => {
+      const div = document.createElement('div');
+      div.style.cssText = [
+        'position:absolute', `left:${startX}px`, `top:-62px`,
+        `width:${size}px`, `height:${size}px`,
+        `animation:lf${i} ${duration.toFixed(2)}s ease-in ${delay.toFixed(3)}s forwards`,
+      ].join(';');
+
+      const lsvg = mk('svg', { viewBox:'-13 -26 26 28' });
+      lsvg.style.cssText = `width:${size}px;height:${size}px;display:block`;
+
+      const lp = mk('path', { d:shape, fill:color });
+      lsvg.appendChild(lp);
+
+      // Midrib + side veins
+      const veins = mk('path', {
+        d:'M 0 2 L 0 -21 M 0 -6 L -6 -12 M 0 -6 L 6 -12 M 0 -13 L -5 -18 M 0 -13 L 5 -18',
+        stroke:'rgba(255,255,255,0.28)', 'stroke-width':'0.7', fill:'none'
+      });
+      lsvg.appendChild(veins);
+
+      div.appendChild(lsvg);
+      shell.appendChild(div);
+    });
+
+    // Last leaf finishes at: lastDelay + maxDuration + buffer
+    const waitMs = ((COUNT - 1) * 0.042 + 2.3 + 0.55) * 1000;
+    setTimeout(() => {
+      shell.style.transition = 'opacity 0.65s ease';
+      shell.style.opacity = '0';
+      setTimeout(() => {
+        shell.remove();
+        styleEl.remove();
+        onComplete();
+      }, 700);
+    }, waitMs);
+  }
+
+  // ── Bouncing flowers ───────────────────────────────────────────────
+  function startBouncingFlowers(bx, by) {
+    const shell = document.createElement('div');
+    shell.style.cssText = 'position:fixed;inset:0;z-index:300;overflow:hidden';
+    document.body.appendChild(shell);
+
+    const COUNT   = 16;
+    const GRAVITY = 290;
     const flowers = [];
 
     for (let i = 0; i < COUNT; i++) {
       const angle = (i / COUNT) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
-      const speed = 200 + Math.random() * 280;
-      const size  = 80 + Math.random() * 60; // 80–140 px
+      const speed = 190 + Math.random() * 300;
+      const size  = 85 + Math.random() * 65;
       const [outer, inner] = PALETTE[i % PALETTE.length];
       const n = [5, 6, 7, 8][i % 4];
 
-      // Start near bouquet centre with a tiny spread
-      const x0 = bx - size / 2 + (Math.random() - 0.5) * 24;
-      const y0 = by - size / 2 + (Math.random() - 0.5) * 24;
+      const x0 = bx - size/2 + (Math.random()-0.5)*28;
+      const y0 = by - size/2 + (Math.random()-0.5)*28;
 
       const div = document.createElement('div');
-      div.style.cssText = `position:absolute;left:${x0}px;top:${y0}px;width:${size}px;height:${size}px;will-change:transform,left,top`;
+      div.style.cssText = [
+        'position:absolute', `left:${x0}px`, `top:${y0}px`,
+        `width:${size}px`, `height:${size}px`,
+        'cursor:grab', 'will-change:transform,left,top',
+      ].join(';');
 
-      // Mini flower SVG (petals start closed)
-      const msvg = mk('svg', { viewBox: '-13 -13 26 26' });
-      msvg.style.cssText = `width:${size}px;height:${size}px;display:block`;
+      const msvg = mk('svg', { viewBox:'-13 -13 26 26' });
+      msvg.style.cssText = `width:${size}px;height:${size}px;display:block;pointer-events:none`;
 
-      const pL = 10, pW = Math.round(10 * 8 / n * 0.78);
+      const pL = 10, pW = Math.round(10 * 8/n * 0.78);
       const fps = [];
 
       for (let j = 0; j < n; j++) {
-        const gr = mk('g', { transform: `rotate(${j * 360 / n})` });
-        const p  = mk('path', { d: petalD(pW, pL), fill: outer, opacity: '0.92' });
+        const gr = mk('g', { transform:`rotate(${j*360/n})` });
+        const p  = mk('path', { d:petalD(pW, pL), fill:outer, opacity:'0.92' });
         p.style.cssText = 'transform-box:fill-box;transform-origin:50% 100%;transform:scaleY(0.1) scaleX(0.2);transition:transform 0.7s cubic-bezier(0.34,1.42,0.64,1)';
         gr.appendChild(p); msvg.appendChild(gr); fps.push(p);
       }
       for (let j = 0; j < n; j++) {
-        const gr = mk('g', { transform: `rotate(${j * 360 / n + 180 / n})` });
-        const p  = mk('path', { d: petalD(Math.round(pW*.7), Math.round(pL*.82)), fill: inner, opacity: '0.82' });
+        const gr = mk('g', { transform:`rotate(${j*360/n+180/n})` });
+        const p  = mk('path', { d:petalD(Math.round(pW*.7), Math.round(pL*.82)), fill:inner, opacity:'0.82' });
         p.style.cssText = 'transform-box:fill-box;transform-origin:50% 100%;transform:scaleY(0.1) scaleX(0.2);transition:transform 0.7s cubic-bezier(0.34,1.42,0.64,1)';
         gr.appendChild(p); msvg.appendChild(gr); fps.push(p);
       }
-      msvg.appendChild(mk('circle', { cx:'0', cy:'0', r:'2.5', fill:'#fdd835' }));
+      msvg.appendChild(mk('circle', { cx:'0',cy:'0',r:'2.5',fill:'#fdd835' }));
 
       div.appendChild(msvg);
       shell.appendChild(div);
 
       flowers.push({
-        el: div, x: x0, y: y0, size,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        angle: Math.random() * 360,
-        omega: (Math.random() - 0.5) * 240, // spin speed °/s
+        el:div, x:x0, y:y0, size,
+        vx:Math.cos(angle)*speed,
+        vy:Math.sin(angle)*speed,
+        angle:Math.random()*360,
+        omega:(Math.random()-0.5)*260,
+        dragging:false,
       });
 
-      // Bloom petals shortly after launch
-      const bloomDelay = 150 + i * 25;
+      const bd = 120 + i*22;
       setTimeout(() => {
         fps.forEach((p, j) => {
-          p.style.transitionDelay = `${(j * 0.05).toFixed(3)}s`;
+          p.style.transitionDelay = `${(j*0.05).toFixed(3)}s`;
           p.style.transform = 'scaleY(1) scaleX(1)';
         });
-      }, bloomDelay);
+      }, bd);
     }
 
-    // Physics loop
+    // ── Physics loop ───────────────────────────────────────────────
     let lastTs = null;
-    let animId = null;
-
-    function loop(ts) {
+    (function loop(ts) {
       if (!lastTs) lastTs = ts;
-      const dt = Math.min((ts - lastTs) / 1000, 0.05);
+      const dt = Math.min((ts - lastTs)/1000, 0.05);
       lastTs = ts;
-
       const W = window.innerWidth, H = window.innerHeight;
 
       flowers.forEach(f => {
+        if (f.dragging) {
+          f.el.style.left = f.x + 'px';
+          f.el.style.top  = f.y + 'px';
+          return;
+        }
         f.vy    += GRAVITY * dt;
         f.x     += f.vx * dt;
         f.y     += f.vy * dt;
         f.angle += f.omega * dt;
 
-        // Bounce off edges
         if (f.x < 0)          { f.x = 0;          f.vx =  Math.abs(f.vx); }
-        if (f.x + f.size > W) { f.x = W - f.size; f.vx = -Math.abs(f.vx); }
+        if (f.x+f.size > W)   { f.x = W-f.size;   f.vx = -Math.abs(f.vx); }
         if (f.y < 0)          { f.y = 0;           f.vy =  Math.abs(f.vy); }
-        if (f.y + f.size > H) { f.y = H - f.size;  f.vy = -Math.abs(f.vy) * 0.82; } // slight dampening on floor
+        if (f.y+f.size > H)   { f.y = H-f.size;   f.vy = -Math.abs(f.vy)*0.82; }
 
         f.el.style.left      = f.x + 'px';
         f.el.style.top       = f.y + 'px';
         f.el.style.transform = `rotate(${f.angle}deg)`;
       });
+      requestAnimationFrame(loop);
+    })(0);
 
-      animId = requestAnimationFrame(loop);
+    // ── Drag / fling ───────────────────────────────────────────────
+    let dragF = null, dox = 0, doy = 0, dHist = [];
+
+    function hitTest(cx, cy) {
+      for (let i = flowers.length-1; i >= 0; i--) {
+        const f = flowers[i];
+        if (cx >= f.x && cx <= f.x+f.size && cy >= f.y && cy <= f.y+f.size) return f;
+      }
+      return null;
     }
-    animId = requestAnimationFrame(loop);
 
-    // Celebration message (auto-fades after a few seconds)
+    function grab(f, cx, cy) {
+      dragF = f; f.dragging = true; f.vx = f.vy = 0;
+      dox = cx - f.x; doy = cy - f.y;
+      f.el.style.cursor = 'grabbing';
+      dHist = [{x:cx, y:cy, t:performance.now()}];
+    }
+
+    function drag(cx, cy) {
+      if (!dragF) return;
+      dragF.x = cx - dox;
+      dragF.y = cy - doy;
+      const now = performance.now();
+      dHist.push({x:cx, y:cy, t:now});
+      while (dHist.length > 1 && now - dHist[0].t > 90) dHist.shift();
+    }
+
+    function release() {
+      if (!dragF) return;
+      if (dHist.length >= 2) {
+        const a = dHist[0], b = dHist[dHist.length-1];
+        const dt = (b.t - a.t) / 1000;
+        if (dt > 0.01) {
+          dragF.vx = (b.x - a.x) / dt;
+          dragF.vy = (b.y - a.y) / dt;
+          const spd = Math.hypot(dragF.vx, dragF.vy);
+          if (spd > 3200) { const s = 3200/spd; dragF.vx *= s; dragF.vy *= s; }
+        }
+      }
+      dragF.el.style.cursor = 'grab';
+      dragF.dragging = false;
+      dragF = null; dHist = [];
+    }
+
+    shell.addEventListener('mousedown', e => {
+      const f = hitTest(e.clientX, e.clientY);
+      if (f) { grab(f, e.clientX, e.clientY); e.preventDefault(); }
+    });
+    document.addEventListener('mousemove', e => { if (dragF) drag(e.clientX, e.clientY); });
+    document.addEventListener('mouseup', release);
+
+    shell.addEventListener('touchstart', e => {
+      const t = e.touches[0], f = hitTest(t.clientX, t.clientY);
+      if (f) { grab(f, t.clientX, t.clientY); e.preventDefault(); }
+    }, {passive:false});
+    document.addEventListener('touchmove', e => {
+      if (dragF) { drag(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); }
+    }, {passive:false});
+    document.addEventListener('touchend', release);
+
+    // ── Celebration message ────────────────────────────────────────
     const msg = document.createElement('div');
     Object.assign(msg.style, {
-      position: 'fixed', top: '50%', left: '50%',
-      transform: 'translate(-50%,-50%)', zIndex: '302',
-      textAlign: 'center', fontFamily: 'Georgia,serif', color: '#8b2040',
-      opacity: '0', transition: 'opacity 0.8s ease', pointerEvents: 'none',
-      textShadow: '0 1px 14px rgba(255,255,255,1), 0 0 40px rgba(255,255,255,0.9)'
+      position:'fixed', top:'50%', left:'50%',
+      transform:'translate(-50%,-50%)', zIndex:'302',
+      textAlign:'center', fontFamily:'Georgia,serif', color:'#8b2040',
+      opacity:'0', transition:'opacity 0.8s ease', pointerEvents:'none',
+      textShadow:'0 1px 16px rgba(255,255,255,1), 0 0 40px rgba(255,255,255,0.95)'
     });
     msg.innerHTML = `
       <div style="font-size:3em;margin-bottom:6px">🌸</div>
@@ -313,83 +445,70 @@ h1 { font-size: 1.85em; color: #b03060; letter-spacing: 0.5px; margin-bottom: 4p
     requestAnimationFrame(() => requestAnimationFrame(() => { msg.style.opacity = '1'; }));
     setTimeout(() => { msg.style.transition = 'opacity 1s ease'; msg.style.opacity = '0'; }, 3200);
     setTimeout(() => msg.remove(), 4300);
-
-    // Tap-to-close hint
-    const tapHint = document.createElement('p');
-    Object.assign(tapHint.style, {
-      position: 'fixed', bottom: '22px', left: '50%',
-      transform: 'translateX(-50%)', zIndex: '302',
-      fontFamily: 'Georgia,serif', fontSize: '0.85em', color: '#b07080',
-      fontStyle: 'italic', pointerEvents: 'none', opacity: '0',
-      transition: 'opacity 0.5s ease', whiteSpace: 'nowrap'
-    });
-    tapHint.textContent = 'Tap anywhere to close';
-    document.body.appendChild(tapHint);
-    setTimeout(() => { tapHint.style.opacity = '1'; }, 2200);
-
-    // Dismiss
-    shell.addEventListener('click', () => {
-      cancelAnimationFrame(animId);
-      [shell, tapHint].forEach(el => {
-        el.style.transition = 'opacity 0.5s ease';
-        el.style.opacity = '0';
-        setTimeout(() => el.remove(), 500);
-      });
-      card.style.opacity = '1';
-      card.style.pointerEvents = '';
-    });
   }
 
-  // ── Flower builders ────────────────────────────────────────────────
+  // ── Trigger: fade card → leaf rain → bouncing flowers ─────────────
+  function triggerExplosion() {
+    // Pre-compute burst origin before card fades
+    const rect = document.getElementById('bouquet').getBoundingClientRect();
+    const bx   = rect.left + (197/400) * rect.width;
+    const by   = rect.top  + (230/310) * rect.height;
 
+    const card = document.querySelector('.card');
+    card.style.opacity = '0';
+    card.style.pointerEvents = 'none';
+
+    showLeafRain(() => startBouncingFlowers(bx, by));
+  }
+
+  // ── Bouquet flower builders ────────────────────────────────────────
   function staticFlower(cx, cy, n, pLen, pWid, outer, inner, cCol, cR, msg, id) {
     const g = mk('g');
     g.style.cursor = 'pointer';
     for (let i = 0; i < n; i++) {
-      const gr = mk('g', { transform: `translate(${cx},${cy}) rotate(${i * 360 / n})` });
-      gr.appendChild(mk('path', { d: petalD(pWid, pLen), fill: outer, opacity: '0.88' }));
+      const gr = mk('g', { transform:`translate(${cx},${cy}) rotate(${i*360/n})` });
+      gr.appendChild(mk('path', { d:petalD(pWid,pLen), fill:outer, opacity:'0.88' }));
       g.appendChild(gr);
     }
-    g.appendChild(mk('circle', { cx, cy, r: cR, fill: cCol }));
+    g.appendChild(mk('circle', { cx, cy, r:cR, fill:cCol }));
     svg.appendChild(g);
-
     g.addEventListener('click', e => {
       e.stopPropagation();
       tryExplode(id);
-      showOverlay({ n, pL: pLen, pW: pWid, outer, inner, msg });
+      showOverlay({ n, pL:pLen, pW:pWid, outer, inner, msg });
     });
   }
 
   function specialFlower(cx, cy) {
-    const g = mk('g', { id: 'sflower' });
+    const g = mk('g', { id:'sflower' });
     g.style.cursor = 'pointer';
 
     const n = 8, pL = 52, pW = 22;
     const allPetals = [];
 
     for (let i = 0; i < n; i++) {
-      const gr = mk('g', { transform: `translate(${cx},${cy}) rotate(${i * 45})` });
-      const p  = mk('path', { d: petalD(pW, pL), fill: '#e05575' });
+      const gr = mk('g', { transform:`translate(${cx},${cy}) rotate(${i*45})` });
+      const p  = mk('path', { d:petalD(pW,pL), fill:'#e05575' });
       p.style.cssText = 'transform-box:fill-box;transform-origin:50% 100%;transform:scaleY(0.07) scaleX(0.22);transition:transform 0.9s cubic-bezier(0.34,1.42,0.64,1)';
       gr.appendChild(p); g.appendChild(gr); allPetals.push(p);
     }
     for (let i = 0; i < n; i++) {
-      const gr = mk('g', { transform: `translate(${cx},${cy}) rotate(${i * 45 + 22.5})` });
-      const p  = mk('path', { d: petalD(pW * .75, pL * .82), fill: '#ef8098' });
+      const gr = mk('g', { transform:`translate(${cx},${cy}) rotate(${i*45+22.5})` });
+      const p  = mk('path', { d:petalD(pW*.75,pL*.82), fill:'#ef8098' });
       p.style.cssText = 'transform-box:fill-box;transform-origin:50% 100%;transform:scaleY(0.07) scaleX(0.22);transition:transform 0.9s cubic-bezier(0.34,1.42,0.64,1)';
       gr.appendChild(p); g.appendChild(gr); allPetals.push(p);
     }
 
     const sepalG = mk('g');
     for (let i = 0; i < 5; i++) {
-      const gr = mk('g', { transform: `translate(${cx},${cy}) rotate(${i * 72})` });
-      const s  = mk('path', { d: petalD(9, 22), fill: '#4a7c35' });
+      const gr = mk('g', { transform:`translate(${cx},${cy}) rotate(${i*72})` });
+      const s  = mk('path', { d:petalD(9,22), fill:'#4a7c35' });
       s.style.cssText = 'opacity:0.95;transition:opacity 0.55s ease 0.1s';
       gr.appendChild(s); sepalG.appendChild(gr);
     }
     g.appendChild(sepalG);
 
-    const dot = mk('circle', { cx, cy, r: '9', fill: '#ffc107' });
+    const dot = mk('circle', { cx, cy, r:'9', fill:'#ffc107' });
     dot.style.transition = 'opacity 0.3s ease 0.4s';
     g.appendChild(dot);
     svg.appendChild(g);
@@ -397,9 +516,8 @@ h1 { font-size: 1.85em; color: #b03060; letter-spacing: 0.5px; margin-bottom: 4p
     let budOpen = false;
 
     function bloom() {
-      g.classList.add('bloomed');
       allPetals.forEach((p, i) => {
-        p.style.transitionDelay = `${(i * 0.065).toFixed(3)}s`;
+        p.style.transitionDelay = `${(i*0.065).toFixed(3)}s`;
         p.style.transform = 'scaleY(1) scaleX(1)';
       });
       sepalG.querySelectorAll('path').forEach(s => { s.style.opacity = '0'; });
@@ -425,59 +543,58 @@ h1 { font-size: 1.85em; color: #b03060; letter-spacing: 0.5px; margin-bottom: 4p
       tryExplode('special');
       bloom();
       showOverlay({
-        n: 8, pL: 52, pW: 22,
-        outer: '#e05575', inner: '#ef8098',
-        msg: ['With all', 'my love', '♥'],
-        onClose: unbloom
+        n:8, pL:52, pW:22,
+        outer:'#e05575', inner:'#ef8098',
+        msg:['With all','my love','♥'],
+        onClose:unbloom
       });
     });
   }
 
   // ── Assemble bouquet ───────────────────────────────────────────────
-
   const WX = 197, WY = 272;
 
   [
-    { fx:  96, fy: 118, cp: [138, 207] },
-    { fx: 155, fy:  80, cp: [163, 186] },
-    { fx: 220, fy:  68, cp: [210, 178] },
-    { fx: 280, fy:  78, cp: [243, 186] },
-    { fx: 340, fy: 116, cp: [265, 205] },
-    { fx: 133, fy: 155, cp: [158, 222] },
-    { fx: 261, fy: 150, cp: [240, 222] },
-  ].forEach(({ fx, fy, cp: [cpx, cpy] }) => {
+    {fx:96,  fy:118, cp:[138,207]},
+    {fx:155, fy:80,  cp:[163,186]},
+    {fx:220, fy:68,  cp:[210,178]},
+    {fx:280, fy:78,  cp:[243,186]},
+    {fx:340, fy:116, cp:[265,205]},
+    {fx:133, fy:155, cp:[158,222]},
+    {fx:261, fy:150, cp:[240,222]},
+  ].forEach(({fx,fy,cp:[cpx,cpy]}) => {
     svg.appendChild(mk('path', {
-      d: `M ${WX} ${WY} Q ${cpx} ${cpy} ${fx} ${fy + 14}`,
-      stroke: '#5a8c3c', 'stroke-width': '2.5', fill: 'none', 'stroke-linecap': 'round'
+      d:`M ${WX} ${WY} Q ${cpx} ${cpy} ${fx} ${fy+14}`,
+      stroke:'#5a8c3c','stroke-width':'2.5',fill:'none','stroke-linecap':'round'
     }));
   });
 
   [[147,207,-40,8,16],[172,224,18,7,14],[230,215,26,9,17],
    [264,220,-23,7,14],[120,238,-52,6,12],[288,231,42,6,12]]
   .forEach(([x,y,rot,rx,ry]) => {
-    const g = mk('g', { transform: `translate(${x},${y}) rotate(${rot})` });
-    g.appendChild(mk('ellipse', { cx: 0, cy: 0, rx, ry, fill: '#5a8c3c', opacity: '0.82' }));
+    const g = mk('g', { transform:`translate(${x},${y}) rotate(${rot})` });
+    g.appendChild(mk('ellipse', { cx:0,cy:0,rx,ry,fill:'#5a8c3c',opacity:'0.82' }));
     svg.appendChild(g);
   });
 
   svg.appendChild(mk('path', {
-    d: `M ${WX-30} ${WY-8} C ${WX-14} ${WY+10} ${WX+14} ${WY+10} ${WX+30} ${WY-8}`,
-    stroke: '#c0395a', 'stroke-width': '3', fill: 'none', 'stroke-linecap': 'round'
+    d:`M ${WX-30} ${WY-8} C ${WX-14} ${WY+10} ${WX+14} ${WY+10} ${WX+30} ${WY-8}`,
+    stroke:'#c0395a','stroke-width':'3',fill:'none','stroke-linecap':'round'
   }));
   [[-20,2,-38,28],[20,2,38,28]].forEach(([x1,y1,x2,y2]) => {
     svg.appendChild(mk('path', {
-      d: `M ${WX+x1} ${WY+y1} L ${WX+x2} ${WY+y2}`,
-      stroke: '#e05575', 'stroke-width': '2.5', fill: 'none', 'stroke-linecap': 'round'
+      d:`M ${WX+x1} ${WY+y1} L ${WX+x2} ${WY+y2}`,
+      stroke:'#e05575','stroke-width':'2.5',fill:'none','stroke-linecap':'round'
     }));
   });
 
   //          cx   cy  n  pL  pW  outer      inner      center     cR  message                          id
-  staticFlower( 96, 111, 6, 28, 14, '#e878a8', '#f0a8cc', '#fdd835',  8, ['You are',    'my sunshine',  '☀'  ], 0);
-  staticFlower(155,  73, 8, 24, 12, '#ab47bc', '#ce93d8', '#fff176',  7, ['Thank you',  'for everything','★'  ], 1);
-  staticFlower(280,  71, 7, 27, 13, '#ff8a65', '#ffb085', '#ff7043',  8, ['My forever', 'hero',          '♥'  ], 2);
-  staticFlower(340, 109, 5, 30, 15, '#f06292', '#f8a0b8', '#fff176',  9, ['You make',   'me smile',      '♥'  ], 3);
-  staticFlower(133, 148, 6, 22, 11, '#80cbc4', '#a8dcd8', '#fdd835',  7, ['My guiding', 'light',         '★'  ], 4);
-  staticFlower(261, 143, 8, 23, 12, '#f48fb1', '#f8b8cc', '#fff176',  7, ['Always in',  'my heart',      '♥'  ], 5);
+  staticFlower( 96,111, 6,28,14, '#e878a8','#f0a8cc','#fdd835', 8, ['You are',   'my sunshine', '☀' ],0);
+  staticFlower(155, 73, 8,24,12, '#ab47bc','#ce93d8','#fff176', 7, ['Thank you', 'for everything','★' ],1);
+  staticFlower(280, 71, 7,27,13, '#ff8a65','#ffb085','#ff7043', 8, ['My forever','hero',          '♥' ],2);
+  staticFlower(340,109, 5,30,15, '#f06292','#f8a0b8','#fff176', 9, ['You make',  'me smile',      '♥' ],3);
+  staticFlower(133,148, 6,22,11, '#80cbc4','#a8dcd8','#fdd835', 7, ['My guiding','light',          '★' ],4);
+  staticFlower(261,143, 8,23,12, '#f48fb1','#f8b8cc','#fff176', 7, ['Always in', 'my heart',       '♥' ],5);
 
   specialFlower(220, 62);
 })();
