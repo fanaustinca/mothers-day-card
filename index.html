@@ -187,85 +187,104 @@ h1 { font-size: 1.85em; color: #b03060; letter-spacing: 0.5px; margin-bottom: 4p
   // ── Leaf rain ──────────────────────────────────────────────────────
   function showLeafRain(onComplete) {
     const W = window.innerWidth, H = window.innerHeight;
-    const COUNT = 38;
-    const LEAF_COLORS = ['#4a7c35','#5a8c3c','#3d6b2a','#6ba050','#508040','#427535','#63954a','#3a6828'];
-    const LEAF_SHAPES = [
-      'M 0 2 C -10 -3 -12 -14 0 -22 C 12 -14 10 -3 0 2 Z',
-      'M 0 2 C -8 -2 -10 -13 0 -24 C 10 -13 8 -2 0 2 Z',
-      'M 0 2 C -12 -3 -13 -12 0 -19 C 13 -12 12 -3 0 2 Z',
+    const COLORS = ['#4a7c35','#5a8c3c','#3d6b2a','#6ba050','#508040','#427535','#63954a','#3a6828','#2e5c1f','#7ab84e'];
+
+    // Dark green wash that fades in behind the leaves
+    const bg = document.createElement('div');
+    bg.style.cssText = 'position:fixed;inset:0;z-index:298;pointer-events:none;background:rgba(22,48,12,0);transition:background 2.2s ease';
+    document.body.appendChild(bg);
+    requestAnimationFrame(() => requestAnimationFrame(() => { bg.style.background = 'rgba(22,48,12,0.65)'; }));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    canvas.style.cssText = 'position:fixed;inset:0;z-index:299;pointer-events:none';
+    document.body.appendChild(canvas);
+    const ctx = canvas.getContext('2d');
+
+    const PATHS = [
+      new Path2D('M 0 2 C -10 -3 -12 -14 0 -22 C 12 -14 10 -3 0 2 Z'),
+      new Path2D('M 0 2 C -8 -2 -10 -13 0 -24 C 10 -13 8 -2 0 2 Z'),
+      new Path2D('M 0 2 C -12 -3 -13 -12 0 -19 C 13 -12 12 -3 0 2 Z'),
     ];
 
-    const shell = document.createElement('div');
-    shell.style.cssText = 'position:fixed;inset:0;z-index:299;pointer-events:none;overflow:hidden';
-    document.body.appendChild(shell);
+    // Grid of final positions guarantees full-screen coverage
+    const cell = Math.max(34, Math.min(68, Math.sqrt(W * H / 200)));
+    const cols = Math.ceil(W / cell) + 1;
+    const rows = Math.ceil(H / cell) + 1;
 
-    // Pre-compute per-leaf data and build CSS keyframes
-    const data = Array.from({length: COUNT}, (_, i) => {
-      const startX   = Math.random() * W;
-      const finalY   = 20 + Math.random() * (H - 50);
-      const dy       = finalY + 62;                        // translateY to reach finalY from top:-62
-      const driftX   = (Math.random() - 0.5) * 220;
-      const driftMid = driftX * 0.6 + (Math.random() - 0.5) * 90;
-      const sr = (Math.random() - 0.5) * 400;
-      const mr = sr  + (Math.random() - 0.5) * 200;
-      const er = mr  + (Math.random() - 0.5) * 200;
-      return {
-        startX, dy, driftX, driftMid, sr, mr, er,
-        duration: 1.0 + Math.random() * 1.3,
-        delay:    i * 0.042,
-        size:     22 + Math.random() * 22,
-        color:    LEAF_COLORS[i % LEAF_COLORS.length],
-        shape:    LEAF_SHAPES[i % LEAF_SHAPES.length],
-      };
-    });
+    const leaves = [];
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const tx = c * cell + (Math.random() - 0.5) * cell * 0.55 + cell / 2;
+        const ty = r * cell + (Math.random() - 0.5) * cell * 0.45 + cell / 2;
+        leaves.push({
+          sx:       Math.random() * W,
+          tx:       Math.max(0, Math.min(W, tx)),
+          ty:       Math.max(0, Math.min(H, ty)),
+          rot:      Math.random() * Math.PI * 2,
+          rotDelta: (Math.random() - 0.5) * Math.PI * 3,
+          // Wave: top of screen fills first, bottom last
+          delay:    (ty / H) * 2.0 + Math.random() * 0.55,
+          duration: 0.62 + Math.random() * 0.55,
+          size:     cell * (0.85 + Math.random() * 0.40),
+          color:    COLORS[Math.floor(Math.random() * COLORS.length)],
+          pathIdx:  Math.floor(Math.random() * 3),
+        });
+      }
+    }
 
-    const styleEl = document.createElement('style');
-    styleEl.textContent = data.map(({dy, driftX, driftMid, sr, mr, er}, i) =>
-      `@keyframes lf${i}{
-        0%  {transform:translate(0,0) rotate(${sr.toFixed(1)}deg);opacity:0}
-        12% {opacity:.9}
-        45% {transform:translate(${driftMid.toFixed(1)}px,${(dy*.44).toFixed(1)}px) rotate(${mr.toFixed(1)}deg)}
-        100%{transform:translate(${driftX.toFixed(1)}px,${dy.toFixed(1)}px) rotate(${er.toFixed(1)}deg);opacity:.9}
-      }`
-    ).join('');
-    document.head.appendChild(styleEl);
+    let t0 = null;
+    (function frame(ts) {
+      if (!t0) t0 = ts;
+      const el = (ts - t0) / 1000;
+      ctx.clearRect(0, 0, W, H);
 
-    data.forEach(({startX, duration, delay, size, color, shape}, i) => {
-      const div = document.createElement('div');
-      div.style.cssText = [
-        'position:absolute', `left:${startX}px`, `top:-62px`,
-        `width:${size}px`, `height:${size}px`,
-        `animation:lf${i} ${duration.toFixed(2)}s ease-in ${delay.toFixed(3)}s forwards`,
-      ].join(';');
+      let done = true;
+      for (const lf of leaves) {
+        if (el < lf.delay) { done = false; continue; }
+        const t = Math.min((el - lf.delay) / lf.duration, 1);
+        if (t < 1) done = false;
 
-      const lsvg = mk('svg', { viewBox:'-13 -26 26 28' });
-      lsvg.style.cssText = `width:${size}px;height:${size}px;display:block`;
+        const x   = lf.sx + (lf.tx - lf.sx) * (1 - (1 - t) * (1 - t));
+        const y   = -42 + (lf.ty + 42) * (t * t);
+        const rot = lf.rot + lf.rotDelta * t;
+        const a   = Math.min(t * 7, 0.96);
+        const s   = lf.size / 26;
 
-      const lp = mk('path', { d:shape, fill:color });
-      lsvg.appendChild(lp);
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(rot);
+        ctx.scale(s, s);
+        ctx.globalAlpha = a;
+        ctx.fillStyle = lf.color;
+        ctx.fill(PATHS[lf.pathIdx]);
+        ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+        ctx.lineWidth = 0.85;
+        ctx.beginPath();
+        ctx.moveTo(0, 1);  ctx.lineTo(0, -21);
+        ctx.moveTo(0, -6); ctx.lineTo(-6, -12);
+        ctx.moveTo(0, -6); ctx.lineTo( 6, -12);
+        ctx.moveTo(0,-13); ctx.lineTo(-5, -18);
+        ctx.moveTo(0,-13); ctx.lineTo( 5, -18);
+        ctx.stroke();
+        ctx.restore();
+      }
 
-      // Midrib + side veins
-      const veins = mk('path', {
-        d:'M 0 2 L 0 -21 M 0 -6 L -6 -12 M 0 -6 L 6 -12 M 0 -13 L -5 -18 M 0 -13 L 5 -18',
-        stroke:'rgba(255,255,255,0.28)', 'stroke-width':'0.7', fill:'none'
-      });
-      lsvg.appendChild(veins);
+      if (!done) { requestAnimationFrame(frame); return; }
 
-      div.appendChild(lsvg);
-      shell.appendChild(div);
-    });
-
-    // Last leaf finishes at: lastDelay + maxDuration + buffer
-    const waitMs = ((COUNT - 1) * 0.042 + 2.3 + 0.55) * 1000;
-    setTimeout(() => {
-      shell.style.transition = 'opacity 0.65s ease';
-      shell.style.opacity = '0';
+      // All landed — hold briefly, then fade out everything
       setTimeout(() => {
-        shell.remove();
-        styleEl.remove();
-        onComplete();
-      }, 700);
-    }, waitMs);
+        let a = 1;
+        (function fade() {
+          a -= 0.022;
+          const v = Math.max(a, 0).toFixed(3);
+          canvas.style.opacity = v;
+          bg.style.opacity = v;
+          if (a > 0) requestAnimationFrame(fade);
+          else { canvas.remove(); bg.remove(); onComplete(); }
+        })();
+      }, 500);
+    })(0);
   }
 
   // ── Bouncing flowers ───────────────────────────────────────────────
