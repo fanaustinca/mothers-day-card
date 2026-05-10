@@ -32,9 +32,74 @@ h1 { font-size: 1.85em; color: #b03060; letter-spacing: 0.5px; margin-bottom: 4p
 }
 
 #bouquet { display: block; margin: 0 auto; width: 100%; max-width: 420px; overflow: visible; }
+
+#gate {
+  position: fixed; inset: 0; z-index: 999;
+  background: linear-gradient(155deg, #fff5f8 0%, #fce4ec 55%, #fff9e6 100%);
+  display: flex; align-items: center; justify-content: center;
+  transition: opacity 0.5s ease;
+}
+#gate-box {
+  text-align: center; padding: 44px 40px;
+  background: rgba(255,255,255,0.93);
+  border-radius: 28px;
+  box-shadow: 0 12px 50px rgba(180,80,110,0.15);
+  width: 90vw; max-width: 360px;
+}
+#gate-box .rose { font-size: 2.4em; margin-bottom: 14px; }
+#gate-box p { color: #b03060; font-size: 1.05em; margin-bottom: 22px; }
+#gate-input {
+  width: 100%; padding: 10px 14px; font-size: 1em;
+  font-family: Georgia, serif; color: #8b2040;
+  border: 1.5px solid #f5b0c5; border-radius: 10px;
+  outline: none; text-align: center; margin-bottom: 14px;
+  background: #fff8fb;
+}
+#gate-input:focus { border-color: #e05575; }
+#gate-btn {
+  padding: 10px 28px; font-size: 1em;
+  font-family: Georgia, serif; cursor: pointer;
+  background: linear-gradient(135deg,#e05575,#c0395a);
+  color: #fff; border: none; border-radius: 10px;
+  letter-spacing: 0.4px; transition: opacity 0.2s;
+}
+#gate-btn:hover { opacity: 0.88; }
+#gate-err {
+  margin-top: 14px; font-size: 0.88em;
+  color: #b07080; font-style: italic; min-height: 1.3em;
+}
 </style>
 </head>
 <body>
+
+<div id="gate">
+  <div id="gate-box">
+    <div class="rose">🌸</div>
+    <p>Who is opening this card?</p>
+    <input id="gate-input" type="text" placeholder="Your name…" autocomplete="off">
+    <br>
+    <button id="gate-btn" onclick="checkGate()">Open Card</button>
+    <div id="gate-err"></div>
+  </div>
+</div>
+
+<script>
+function checkGate() {
+  const name = document.getElementById('gate-input').value.trim().toLowerCase();
+  if (name === 'leah') {
+    const err = document.getElementById('gate-err');
+    err.textContent = 'This card isn\'t ready for you yet! 🙈';
+    document.getElementById('gate-input').value = '';
+    return;
+  }
+  if (!name) { document.getElementById('gate-err').textContent = 'Please enter your name first!'; return; }
+  const gate = document.getElementById('gate');
+  gate.style.opacity = '0';
+  setTimeout(() => gate.remove(), 520);
+}
+document.getElementById('gate-input').addEventListener('keydown', e => { if (e.key === 'Enter') checkGate(); });
+</script>
+
 <div class="card">
   <h1>Happy Mother's Day</h1>
   <p class="year">2 0 2 6</p>
